@@ -1,0 +1,24 @@
+library(curatedMetagenomicData)
+library(dplyr)
+library(SummarizedExperiment)
+library(TreeSummarizedExperiment)
+
+crc <- sampleMetadata %>%
+  filter(grepl("CRC", sampleMetadata$disease))
+
+library(lefser)
+
+crc_agegroup2 <- crc %>% mutate(age_group = case_when(age >= 50 ~ "LOCRC", age < 50 ~ "EOCRC")) %>%
+  filter(body_site == "stool") %>%
+    select(where(~!all(is.na(.x)))) %>%
+  returnSamples(dataType = "relative_abundance", rownames = "short") 
+crc_agegroup2$age_group <- factor(crc_agegroup2$age_group)
+
+se <- SummarizedExperiment(assays = assay(crc_agegroup2, "relative_abundance"), colData = colData(crc_agegroup2))
+
+res_group <- lefser(se, kruskal.threshold=0.05, wilcox.threshold=0.05, lda.threshold=1, groupCol="age_group", blockCol=NULL, assay=1L, trim.names=FALSE, checkAbundances=TRUE)
+head(res_group)
+
+contrast <- lefser(se, groupCol = "age_group")
+head(contrast)
+lefserPlot(contrast)
